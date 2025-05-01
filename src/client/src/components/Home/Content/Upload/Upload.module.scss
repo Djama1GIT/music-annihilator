@@ -1,0 +1,59 @@
+.rowContainer {
+  width: 100%;
+
+  .uploadCard {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 40px;
+
+    .dragger {
+      padding: 40px 20px;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+
+    .uploadIcon {
+      font-size: 48px;
+      color: #1890ff;
+      margin-bottom: 20px;
+    }
+
+    .uploadTitle {
+      margin-bottom: 8px;
+    }
+
+    .fileTypes {
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .bottomSpace {
+      width: 100%;
+
+      .processButton {
+        height: 48px;
+        font-size: 16px;
+        font-weight: 500;
+      }
+
+      .progressContainer {
+        margin-top: 16px;
+
+        .progressTip {
+          font-size: 12px;
+          margin-top: 8px;
+          display: block;
+        }
+      }
+
+      .resultAlert {
+        margin-top: 16px;
+        border-radius: 8px;
+      }
+
+      .playButton {
+        margin-right: 8px;
+      }
+    }
+  }
+}
