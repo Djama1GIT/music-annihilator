@@ -1,15 +1,18 @@
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { Button, Modal, Typography } from "antd";
 import React from "react";
+import { useAnnihilatorStore } from "../../../../store";
 
 const { Title, Paragraph } = Typography;
 
-interface HowItsWorksModalInterface {
-  isModalVisible: boolean;
-  handleCancel: () => void;
-}
+const HowItWorksModal: React.FC = () => {
+  const aboutModalVisible = useAnnihilatorStore(state => state.aboutModalVisible);
+  const setAboutModalVisible = useAnnihilatorStore(state => state.setAboutModalVisible);
 
-const HowItWorksModal: React.FC<HowItsWorksModalInterface> = ({ isModalVisible, handleCancel }) => {
+  const handleCancel = (): void => {
+    setAboutModalVisible(false);
+  };
+
   const modalTitle: React.ReactNode = (
     <div>
       <QuestionCircleOutlined/>
@@ -26,7 +29,7 @@ const HowItWorksModal: React.FC<HowItsWorksModalInterface> = ({ isModalVisible, 
   return (
     <Modal
       title={modalTitle}
-      open={isModalVisible}
+      open={aboutModalVisible}
       onCancel={handleCancel}
       footer={modalFooter}
       width={800}

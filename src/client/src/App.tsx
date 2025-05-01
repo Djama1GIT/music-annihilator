@@ -1,19 +1,33 @@
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { router } from "./routes";
-import './App.css';
 import { ConfigProvider, theme } from "antd";
+import './App.css';
+
+import { useAnnihilatorStore } from "./store";
 
 const App: React.FC = () => {
-  const savedTheme = localStorage.getItem('theme');
-  const isDarkMode = savedTheme === 'dark';
-  document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+  const appTheme = useAnnihilatorStore(state => state.theme);
+  const isDarkMode = appTheme === 'dark';
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', appTheme);
+  }, [appTheme]);
 
   return (
     <BrowserRouter>
       <ConfigProvider
         theme={{
           algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          components: {
+            Layout: {
+              colorBgHeader: isDarkMode ? "#111" : "#fff",
+              colorBgBody: isDarkMode ? "#000" : "#f7f7f7",
+              colorBgLayout: isDarkMode ? "#111" : "#fff",
+            },
+          },
+          cssVar: true,
+          hashed: false,
         }}
       >
         <div className="App">

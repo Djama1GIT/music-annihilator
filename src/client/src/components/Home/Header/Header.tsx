@@ -1,26 +1,26 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button, Typography, Layout, Switch } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import styles from './Header.module.scss';
 import HowItWorksModal from "./HowItWorksModal/HowItWorksModal";
+import { useAnnihilatorStore } from "../../../store";
 
 const { Header } = Layout;
 const { Title, Text } = Typography;
 
-interface HeaderComponentInterface {
-  isDarkMode: boolean;
-  handleThemeChange: (checked: boolean) => void;
-}
+const HeaderComponent: React.FC = () => {
+  const theme = useAnnihilatorStore(state => state.theme);
+  const setTheme = useAnnihilatorStore(state => state.setTheme);
+  const isDarkMode = theme === 'dark';
 
-const HeaderComponent: React.FC<HeaderComponentInterface> = ({ isDarkMode, handleThemeChange }) => {
-  const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+  const setAboutModalVisible = useAnnihilatorStore(state => state.setAboutModalVisible);
 
-  const showModal = (): void => {
-    setIsModalVisible(true);
+  const handleThemeChange = (checked: boolean): void => {
+    setTheme(checked ? 'dark' : 'light');
   };
 
-  const handleCancel = (): void => {
-    setIsModalVisible(false);
+  const showModal = (): void => {
+    setAboutModalVisible(true);
   };
 
   return (
@@ -45,22 +45,18 @@ const HeaderComponent: React.FC<HeaderComponentInterface> = ({ isDarkMode, handl
           >
             Как это работает
           </Button>
-          <div className={styles.themeToggle} title="Сменить цветовую схему">
-            <Switch
-              checkedChildren="Темная"
-              unCheckedChildren="Светлая"
-              checked={isDarkMode}
-              onChange={handleThemeChange}
-            />
-          </div>
+          <Switch
+            checkedChildren="Темная"
+            unCheckedChildren="Светлая"
+            checked={isDarkMode}
+            className={styles.themeToggle}
+            onChange={handleThemeChange}
+            title="Сменить цветовую схему"
+          />
         </div>
       </Header>
 
-
-      <HowItWorksModal
-        isModalVisible={isModalVisible}
-        handleCancel={handleCancel}
-      />
+      <HowItWorksModal />
     </div>
   );
 };

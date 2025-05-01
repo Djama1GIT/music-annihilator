@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import {
   Alert,
   Button,
@@ -10,20 +10,26 @@ import {
   Space,
   Typography,
   Upload,
-  UploadFile,
   UploadProps
 } from "antd";
 import { DownloadOutlined, PauseCircleOutlined, PlayCircleOutlined, UploadOutlined } from "@ant-design/icons";
 import styles from "./Upload.module.scss";
 
+import { useAnnihilatorStore } from "../../../../store";
+
 const { Text, Title } = Typography;
 
 const UploadComponent: React.FC = () => {
-  const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const [uploading, setUploading] = useState<boolean>(false);
-  const [processing, setProcessing] = useState<boolean>(false);
-  const [progress, setProgress] = useState<number>(0);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const fileList = useAnnihilatorStore(state => state.fileList);
+  const isUploading = useAnnihilatorStore(state => state.isUploading);
+  const isProcessing = useAnnihilatorStore(state => state.isProcessing);
+  const progress = useAnnihilatorStore(state => state.progress);
+  const isPlaying = useAnnihilatorStore(state => state.isPlaying);
+  const setFileList = useAnnihilatorStore(state => state.setFileList);
+  const setIsUploading = useAnnihilatorStore(state => state.setIsUploading);
+  const setIsProcessing = useAnnihilatorStore(state => state.setIsProcessing);
+  const setProgress = useAnnihilatorStore(state => state.setProgress);
+  const setIsPlaying = useAnnihilatorStore(state => state.setIsPlaying);
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -44,14 +50,14 @@ const UploadComponent: React.FC = () => {
   const startProcessing = (): void => {
     if (fileList.length === 0) return;
 
-    setUploading(true);
+    setIsUploading(true);
     setProgress(0);
 
     const uploadInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 50) {
           clearInterval(uploadInterval);
-          setUploading(false);
+          setIsUploading(false);
           startActualProcessing();
           return 50;
         }
@@ -61,13 +67,13 @@ const UploadComponent: React.FC = () => {
   };
 
   const startActualProcessing = (): void => {
-    setProcessing(true);
+    setIsProcessing(true);
 
     const processingInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
           clearInterval(processingInterval);
-          setProcessing(false);
+          setIsProcessing(false);
           return 100;
         }
         return prev + 1;
@@ -98,7 +104,7 @@ const UploadComponent: React.FC = () => {
     onChange: handleUpload,
     beforeUpload: () => false,
     className: styles.dragger,
-    disabled: uploading || processing
+    disabled: isUploading || isProcessing
   };
 
   const progressStrokeColor = {
@@ -127,18 +133,18 @@ const UploadComponent: React.FC = () => {
               size="large"
               block
               onClick={startProcessing}
-              disabled={fileList.length === 0 || uploading || processing}
-              loading={uploading || processing}
+              disabled={fileList.length === 0 || isUploading || isProcessing}
+              loading={isUploading || isProcessing}
               className={styles.processButton}
             >
-              {uploading ? 'Загрузка файла...' :
-                processing ? 'Обработка...' : 'Начать обработку'}
+              {isUploading ? 'Загрузка файла...' :
+                isProcessing ? 'Обработка...' : 'Начать обработку'}
             </Button>
 
-            {(uploading || processing) && (
+            {(isUploading || isProcessing) && (
               <div className={styles.progressContainer}>
                 <Text strong>
-                  {uploading ? 'Загрузка файла на сервер...' : 'Удаление музыки из аудио...'}
+                  {isUploading ? 'Загрузка файла на сервер...' : 'Удаление музыки из аудио...'}
                 </Text>
                 <Progress
                   percent={progress}
@@ -146,7 +152,7 @@ const UploadComponent: React.FC = () => {
                   strokeColor={progressStrokeColor}
                 />
                 <Text type="secondary" className={styles.progressTip}>
-                  {uploading ? 'Пожалуйста, подождите...' :
+                  {isUploading ? 'Пожалуйста, подождите...' :
                     'Обычно обработка занимает 1-2 минуты в зависимости от длины файла'}
                 </Text>
               </div>
