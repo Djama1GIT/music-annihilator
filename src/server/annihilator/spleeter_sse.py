@@ -42,7 +42,7 @@ class SpleeterSSE(Spleeter):
             )
 
             # Process audio and generate progress updates
-            for sse_update in self.separate_with_progress(
+            async for sse_update in self.separate_with_progress(
                 audio_bytes=audio_bytes,
                 filename=filename,
                 s3_output_prefix="processed/",

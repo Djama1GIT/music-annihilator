@@ -1,7 +1,7 @@
-import subprocess
+import asyncio
 import tempfile
 from pathlib import Path
-from typing import Dict, Generator
+from typing import Dict, AsyncGenerator
 
 from src.server.annihilator.progress_tracker import ProgressTracker
 from src.server.enums.logger import LoggerLevelsEnum
@@ -70,9 +70,9 @@ class Spleeter:
                 exc_info=exc_info,
             )
 
-    def _run_spleeter_command(self, input_path: Path, output_dir: Path) -> int:
+    async def _run_spleeter_command(self, input_path: Path, output_dir: Path) -> int:
         """
-        Execute the spleeter command and return the exit code.
+        Execute the spleeter command asynchronously and return the exit code.
 
         Parameters:
             input_path (Path): Path to input audio file
@@ -101,13 +101,15 @@ class Spleeter:
         ]
 
         self._log(f"Executing command: {' '.join(cmd)}")
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True,
+
+        # Create subprocess and run asynchronously
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        process.wait()
+
+        await process.wait()
         return process.returncode
 
     @staticmethod
@@ -126,9 +128,12 @@ class Spleeter:
         """
         return {file.stem: file for file in output_dir.iterdir() if file.is_file()}
 
-    def separate_with_progress(
-        self, audio_bytes: bytes, filename: str, s3_output_prefix: str = ""
-    ) -> Generator[ProgressSSESchema, None, None]:
+    async def separate_with_progress(
+        self,
+        audio_bytes: bytes,
+        filename: str,
+        s3_output_prefix: str = "",
+    ) -> AsyncGenerator[ProgressSSESchema, None]:
         """
         Separate audio file with progress updates via Server-Sent Events (SSE).
 
@@ -164,7 +169,13 @@ class Spleeter:
                     message="File received, starting processing",
                 )
 
-                return_code = self._run_spleeter_command(input_path, output_dir)
+                yield self.progress_tracker.update_progress(
+                    progress=AnnihilationProgressEnum.WORK_STARTED,
+                    message="Processing in progress",
+                )
+
+                # Run command asynchronously
+                return_code = await self._run_spleeter_command(input_path, output_dir)
                 if return_code != 0:
                     yield self.progress_tracker.error_update(
                         error="Spleeter processing failed",
