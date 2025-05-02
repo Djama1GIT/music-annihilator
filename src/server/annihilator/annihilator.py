@@ -1,9 +1,13 @@
 import logging
 import subprocess
 import tempfile
+from logging import Logger
 from pathlib import Path
 from typing import Union, Dict, Generator
+
 from botocore.exceptions import ClientError
+
+from src.server.logger import logger
 
 
 class SpleeterSeparator:
@@ -15,29 +19,30 @@ class SpleeterSeparator:
         codec: str = "mp3",
         bitrate: str = "192k",
         enable_logging: bool = True,
+        _logger: Logger = logger,
     ):
         self.s3_client = s3_client
         self.s3_bucket = s3_bucket
         self.model = model
         self.codec = codec
         self.bitrate = bitrate
-        self.logger = self._setup_logger() if enable_logging else None
+        self.logger = (_logger or self._setup_logger()) if enable_logging else None
         self._log(
             f"Initialized SpleeterSeparator with model={model}, codec={codec}, bitrate={bitrate}"
         )
 
     @staticmethod
     def _setup_logger() -> logging.Logger:
-        logger = logging.getLogger("SpleeterSeparator")
-        logger.setLevel(logging.INFO)
+        new_logger = logging.getLogger("SpleeterSeparator")
+        new_logger.setLevel(logging.INFO)
         handler = logging.StreamHandler()
         formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
         handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        logger.info("Logger setup complete")
-        return logger
+        new_logger.addHandler(handler)
+        new_logger.info("Logger setup complete")
+        return new_logger
 
     def _log(self, message: str, level: str = "info"):
         if self.logger:
@@ -61,12 +66,11 @@ class SpleeterSeparator:
         input_path: Path,
         output_dir: Path,
     ) -> Generator[Dict[str, Union[int, str]], None, None]:
-        """Генератор прогресса и результатов обработки"""
+        """Progress and processing results generator"""
         try:
             self._log(f"Starting processing for file: {input_path}")
             self._log(f"Output directory: {output_dir}")
 
-            # Этап 1: Подготовка (20%)
             yield {"progress": 20, "message": "File received, starting processing"}
             self._log("Preparation stage complete (20%)")
 
@@ -93,11 +97,9 @@ class SpleeterSeparator:
 
             self._log(f"Preparing to run command: {' '.join(cmd)}")
 
-            # Этап 2: Обработка началась (50%)
             yield {"progress": 50, "message": "Processing started"}
             self._log("Processing stage started (50%)")
 
-            # Запускаем процесс
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -106,13 +108,11 @@ class SpleeterSeparator:
             )
             self._log(f"Spleeter process started with PID: {process.pid}")
 
-            # Ждем завершения
             process.wait()
             self._log(
                 f"Spleeter process completed with return code: {process.returncode}"
             )
 
-            # Этап 3: Обработка завершена (80%)
             yield {"progress": 80, "message": "Processing completed"}
             self._log("Processing stage completed (80%)")
 
@@ -122,7 +122,6 @@ class SpleeterSeparator:
                 yield {"progress": 100, "error": error}
                 return
 
-            # Находим результаты
             output_files = {}
             self._log(f"Searching for output files in: {output_dir}")
             for file in output_dir.iterdir():
@@ -150,7 +149,7 @@ class SpleeterSeparator:
     def separate_with_progress(
         self, audio_bytes: bytes, filename: str, s3_output_prefix: str = ""
     ) -> Generator[Dict[str, Union[int, str, Dict[str, str]]], None, None]:
-        """Генератор для SSE с прогрессом и результатами"""
+        """Generator for SSE with progress and results"""
         self._log(f"Starting separation process for file: {filename}")
         self._log(f"Output S3 prefix: {s3_output_prefix}")
         self._log(f"Audio data size: {len(audio_bytes)} bytes")
@@ -160,7 +159,6 @@ class SpleeterSeparator:
                 temp_dir_path = Path(temp_dir)
                 self._log(f"Created temporary directory: {temp_dir_path}")
 
-                # Сохраняем входной файл
                 input_path = temp_dir_path / filename
                 self._log(f"Saving input file to: {input_path}")
                 with open(input_path, "wb") as f:
@@ -173,34 +171,29 @@ class SpleeterSeparator:
                 self._log(f"Creating output directory: {output_dir}")
                 output_dir.mkdir()
 
-                # Запускаем обработку с прогрессом
                 progress_gen = self._run_spleeter_with_progress(input_path, output_dir)
                 self._log("Spleeter process generator created")
 
                 output_files = {}
 
-                # Получаем обновления прогресса
                 for progress_update in progress_gen:
-                    print(0)
                     if "progress" in progress_update:
                         self._log(
                             f"Progress update: {progress_update['progress']}% - "
                             f"{progress_update.get('message', '')}"
                         )
                         yield progress_update
-                    print(1)
+
                     if "error" in progress_update:
                         self._log(
                             f"Error in progress update: {progress_update['error']}",
                             "error",
                         )
-                    print(2)
+
                     if "files" in progress_update:
-                        print(3)
                         output_files = progress_update["files"]
-                print(4)
+
                 if output_files:
-                    print(5)
                     self._log(
                         f"Processing completed with success, files={len(output_files)}"
                     )
@@ -210,7 +203,6 @@ class SpleeterSeparator:
                     yield {"progress": 100, "error": "Processing failed"}
                     return
 
-                # Загружаем в S3 и получаем ссылки
                 self._log(f"Starting S3 upload for {len(output_files)} files")
 
                 for stem, file_path in output_files.items():
@@ -225,7 +217,6 @@ class SpleeterSeparator:
 
                 self._log(f"Upload complete for {input_path.name}")
 
-                # Финальный результат (100%)
                 final_result = {
                     "progress": 100,
                     "message": "Processing complete",
