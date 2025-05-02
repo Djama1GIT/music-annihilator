@@ -14,3 +14,9 @@ class Settings(BaseSettings):
     ALLOW_CREDENTIALS: bool = True
     ALLOW_METHODS: List[str] = ["*"]
     ALLOW_HEADERS: List[str] = ["*"]
+
+    S3_ENDPOINT_URL: str
+    S3_ACCESS_KEY: str
+    S3_SECRET_KEY: str
+    S3_REGION: str
+    S3_BUCKET: str

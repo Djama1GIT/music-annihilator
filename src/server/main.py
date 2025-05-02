@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from src.server.config import Settings
 from src.server.routers.processing import router as processing_router
+from src.server.routers.files import router as files_router
 
 settings = Settings()
 
@@ -20,7 +21,8 @@ app.add_middleware(
     allow_headers=settings.ALLOW_HEADERS,
 )
 
-app.include_router(processing_router)
+app.include_router(processing_router, prefix="/api/v1")
+app.include_router(files_router, prefix="/api/v1")
 
 
 # noinspection PyUnusedLocal
