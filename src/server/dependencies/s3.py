@@ -2,7 +2,7 @@ from botocore.client import BaseClient
 from fastapi import Depends
 
 from src.server.config import Settings
-from src.server.services.boto import S3Client
+from src.server.services.s3.client import S3Client
 
 _s3_client = S3Client()
 

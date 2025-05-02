@@ -1,12 +1,10 @@
-import logging
 import subprocess
 import tempfile
-from logging import Logger
 from pathlib import Path
 from typing import Union, Dict, Generator
 
-from botocore.exceptions import ClientError
-
+from src.server.annihilator.progress_tracker import ProgressTracker
+from src.server.services.s3.uploader import S3Uploader
 from src.server.logger import logger
 
 
@@ -19,217 +17,122 @@ class SpleeterSeparator:
         codec: str = "mp3",
         bitrate: str = "192k",
         enable_logging: bool = True,
-        _logger: Logger = logger,
     ):
-        self.s3_client = s3_client
-        self.s3_bucket = s3_bucket
         self.model = model
         self.codec = codec
         self.bitrate = bitrate
-        self.logger = (_logger or self._setup_logger()) if enable_logging else None
-        self._log(
-            f"Initialized SpleeterSeparator with model={model}, codec={codec}, bitrate={bitrate}"
-        )
+        self.logger = logger if enable_logging else None
+        self.s3_uploader = S3Uploader(s3_client, s3_bucket, self.logger)
+        self.progress_tracker = ProgressTracker(self.logger)
 
-    @staticmethod
-    def _setup_logger() -> logging.Logger:
-        new_logger = logging.getLogger("SpleeterSeparator")
-        new_logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        self._log(
+            f"Initialized SpleeterSeparator with model={model}, "
+            f"codec={codec}, bitrate={bitrate}"
         )
-        handler.setFormatter(formatter)
-        new_logger.addHandler(handler)
-        new_logger.info("Logger setup complete")
-        return new_logger
 
     def _log(self, message: str, level: str = "info"):
         if self.logger:
-            getattr(self.logger, level)(message)
+            getattr(self.logger, level)(f"{__class__.__name__}: {message}")
 
-    def _upload_to_s3(self, file_path: Path, s3_key: str) -> bool:
-        self._log(f"Attempting to upload file to S3: {file_path} -> {s3_key}")
-        try:
-            self.s3_client.upload_file(str(file_path), self.s3_bucket, s3_key)
-            self._log(f"Successfully uploaded file to S3: {s3_key}")
-            return True
-        except ClientError as e:
-            self._log(f"S3 upload error for {file_path}: {str(e)}", "error")
-            return False
-        except Exception as e:
-            self._log(f"Unexpected error during S3 upload: {str(e)}", "error")
-            return False
+    def _run_spleeter_command(self, input_path: Path, output_dir: Path) -> int:
+        """Execute the spleeter command and return the exit code."""
+        cmd = [
+            "spleeter",
+            "separate",
+            "-p",
+            f"spleeter:{self.model}",
+            "-c",
+            self.codec,
+            "-b",
+            self.bitrate,
+            "-o",
+            str(output_dir),
+            "-f",
+            "{instrument}.{codec}",
+            str(input_path),
+        ]
 
-    def _run_spleeter_with_progress(
-        self,
-        input_path: Path,
-        output_dir: Path,
-    ) -> Generator[Dict[str, Union[int, str]], None, None]:
-        """Progress and processing results generator"""
-        try:
-            self._log(f"Starting processing for file: {input_path}")
-            self._log(f"Output directory: {output_dir}")
+        self._log(f"Executing command: {' '.join(cmd)}")
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+        )
+        process.wait()
+        return process.returncode
 
-            yield {"progress": 20, "message": "File received, starting processing"}
-            self._log("Preparation stage complete (20%)")
-
-            # Create the output directory structure in advance
-
-            self._log(f"Creating output directory: {output_dir}")
-            output_dir.mkdir(parents=True, exist_ok=True)
-
-            cmd = [
-                "spleeter",
-                "separate",
-                "-p",
-                f"spleeter:{self.model}",
-                "-c",
-                self.codec,
-                "-b",
-                self.bitrate,
-                "-o",
-                str(output_dir),
-                "-f",
-                "{instrument}.{codec}",
-                str(input_path),
-            ]
-
-            self._log(f"Preparing to run command: {' '.join(cmd)}")
-
-            yield {"progress": 50, "message": "Processing started"}
-            self._log("Processing stage started (50%)")
-
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                universal_newlines=True,
-            )
-            self._log(f"Spleeter process started with PID: {process.pid}")
-
-            process.wait()
-            self._log(
-                f"Spleeter process completed with return code: {process.returncode}"
-            )
-
-            yield {"progress": 80, "message": "Processing completed"}
-            self._log("Processing stage completed (80%)")
-
-            if process.returncode != 0:
-                error = process.stderr.read()
-                self._log(f"Spleeter processing failed with error: {error}", "error")
-                yield {"progress": 100, "error": error}
-                return
-
-            output_files = {}
-            self._log(f"Searching for output files in: {output_dir}")
-            for file in output_dir.iterdir():
-                if file.is_file():
-                    self._log(f"Found output file: {file.name}")
-                    output_files[file.stem] = file
-
-            self._log(f"Total output files found: {len(output_files)}")
-            yield {
-                "progress": 90,
-                "message": "Files found",
-                "files": {k: str(v) for k, v in output_files.items()}
-            }
-            return
-
-        except subprocess.SubprocessError as e:
-            self._log(f"Subprocess error during Spleeter execution: {str(e)}", "error")
-            yield {"progress": 100, "error": str(e)}
-            return
-        except Exception as e:
-            self._log(f"Unexpected error during processing: {str(e)}", "error")
-            yield {"progress": 100, "error": str(e)}
-            return
+    @staticmethod
+    def _get_output_files(output_dir: Path) -> Dict[str, Path]:
+        """Collect and return the output files from the processing directory."""
+        output_files = {}
+        for file in output_dir.iterdir():
+            if file.is_file():
+                output_files[file.stem] = file
+        return output_files
 
     def separate_with_progress(
         self, audio_bytes: bytes, filename: str, s3_output_prefix: str = ""
     ) -> Generator[Dict[str, Union[int, str, Dict[str, str]]], None, None]:
         """Generator for SSE with progress and results"""
-        self._log(f"Starting separation process for file: {filename}")
-        self._log(f"Output S3 prefix: {s3_output_prefix}")
-        self._log(f"Audio data size: {len(audio_bytes)} bytes")
-
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 temp_dir_path = Path(temp_dir)
-                self._log(f"Created temporary directory: {temp_dir_path}")
-
                 input_path = temp_dir_path / filename
-                self._log(f"Saving input file to: {input_path}")
+
+                # Save input file
                 with open(input_path, "wb") as f:
                     f.write(audio_bytes)
-                self._log(
-                    f"Input file saved successfully. Size: {input_path.stat().st_size} bytes"
-                )
 
+                # Process with Spleeter
                 output_dir = temp_dir_path / "output"
-                self._log(f"Creating output directory: {output_dir}")
                 output_dir.mkdir()
 
-                progress_gen = self._run_spleeter_with_progress(input_path, output_dir)
-                self._log("Spleeter process generator created")
+                yield self.progress_tracker.update_progress(
+                    progress=50,
+                    message="File received, starting processing"
+                )
 
-                output_files = {}
-
-                for progress_update in progress_gen:
-                    if "progress" in progress_update:
-                        self._log(
-                            f"Progress update: {progress_update['progress']}% - "
-                            f"{progress_update.get('message', '')}"
-                        )
-                        yield progress_update
-
-                    if "error" in progress_update:
-                        self._log(
-                            f"Error in progress update: {progress_update['error']}",
-                            "error",
-                        )
-
-                    if "files" in progress_update:
-                        output_files = progress_update["files"]
-
-                if output_files:
-                    self._log(
-                        f"Processing completed with success, files={len(output_files)}"
+                return_code = self._run_spleeter_command(input_path, output_dir)
+                if return_code != 0:
+                    yield self.progress_tracker.error_update(
+                        error="Spleeter processing failed"
                     )
-                    yield {"progress": 90}
-                else:
-                    self._log("Processing failed, exiting", "error")
-                    yield {"progress": 100, "error": "Processing failed"}
                     return
 
-                self._log(f"Starting S3 upload for {len(output_files)} files")
+                yield self.progress_tracker.update_progress(
+                    progress=80,
+                    message="Processing completed",
+                )
 
+                # Handle output files
+                output_files = self._get_output_files(output_dir)
+                if not output_files:
+                    yield self.progress_tracker.error_update(
+                        "No output files generated"
+                    )
+                    return
+
+                yield self.progress_tracker.update_progress(
+                    progress=90,
+                    message="Files found",
+                    files={k: str(v) for k, v in output_files.items()},
+                )
+
+                # Upload to S3
                 for stem, file_path in output_files.items():
                     s3_key = f"{s3_output_prefix}{input_path.stem}/{stem}.{self.codec}"
-                    self._log(f"Uploading {stem} to S3: {s3_key}")
-                    if self._upload_to_s3(file_path, s3_key):
-                        self._log(f"Upload successful for {stem}")
-                    else:
-                        self._log(f"Upload failed for {stem}", "warning")
-                        yield {"progress": 100, "error": f"Upload failed for {stem}"}
+                    if not self.s3_uploader.upload_file(file_path, s3_key):
+                        yield self.progress_tracker.error_update(
+                            f"Upload failed for {stem}"
+                        )
                         return
 
-                self._log(f"Upload complete for {input_path.name}")
+                yield self.progress_tracker.update_progress(
+                    progress=100,
+                    message="Processing complete",
+                    result=input_path.stem,
+                )
 
-                final_result = {
-                    "progress": 100,
-                    "message": "Processing complete",
-                    "result": input_path.stem,
-                }
-                self._log(f"Yielding final result: {final_result}")
-                yield final_result
-
-            except IOError as e:
-                self._log(f"File I/O error: {str(e)}", "error")
-                yield {"progress": 100, "error": str(e)}
             except Exception as e:
-                self._log(f"Unexpected error in separation process: {str(e)}", "error")
-                yield {"progress": 100, "error": str(e)}
-            finally:
-                self._log("Cleaning up temporary directory")
+                yield self.progress_tracker.error_update(str(e))
