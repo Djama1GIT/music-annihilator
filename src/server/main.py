@@ -1,6 +1,3 @@
-from contextlib import asynccontextmanager
-from typing import AsyncIterator
-
 from fastapi import FastAPI, status, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,8 +9,10 @@ from src.server.config import Settings
 from src.server.api.v1.routers.processing import router as processing_router_v1
 from src.server.api.v1.routers.files import router as files_router_v1
 
+# Load application configuration
 settings = Settings()
 
+# Initialize main FastAPI application with metadata from settings
 app = FastAPI(
     title=settings.TITLE,
     description=settings.DESCRIPTION,
@@ -22,8 +21,11 @@ app = FastAPI(
     contact=settings.CONTACT,
     license_info=settings.LICENSE_INFO,
 )
+
+# Initialize API v1 application
 v1 = FastAPI()
 
+# Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,  # type: ignore
     allow_origins=settings.ALLOW_ORIGINS,
@@ -32,28 +34,57 @@ app.add_middleware(
     allow_headers=settings.ALLOW_HEADERS,
 )
 
+# Include routers for latest API version
 app.include_router(processing_router_v1, prefix="/api/latest")
 app.include_router(files_router_v1, prefix="/api/latest")
 
+# Include routers for v1 API
 v1.include_router(processing_router_v1)
 v1.include_router(files_router_v1)
 
+# Mount v1 application under /api/v1 path
 app.mount("/api/v1", v1)
 
 
 # noinspection PyUnusedLocal
 @app.exception_handler(Exception)
-async def exception_error(request: Request, exc: Exception):
+async def exception_error(
+        request: Request,
+        exc: Exception,
+) -> JSONResponse:
+    """
+    Global exception handler for all uncaught exceptions.
+
+    Parameters:
+        request: The incoming request (unused)
+        exc: The exception that was raised
+
+    Returns:
+        JSONResponse: 500 error response with exception details
+    """
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=jsonable_encoder({'detail': str(exc)})
+        content=jsonable_encoder({"detail": str(exc)}),
     )
 
 
 # noinspection PyUnusedLocal
 @app.exception_handler(ValidationError)
-async def validation_exception_error(request: Request, exc: ValidationError):
+async def validation_exception_error(
+    request: Request,
+    exc: ValidationError,
+) -> JSONResponse:
+    """
+    Handler for Pydantic validation errors.
+
+    Parameters:
+        request: The incoming request (unused)
+        exc: The validation error that occurred
+
+    Returns:
+        JSONResponse: 422 error response with validation error details
+    """
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder({'detail': exc.errors()})
+        content=jsonable_encoder({"detail": exc.errors()}),
     )
