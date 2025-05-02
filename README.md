@@ -45,7 +45,8 @@ http://localhost/
 
 # TODO:
 
-- backend
+- refactoring
+- tests
 - docker
 - makefile
 - fix readme

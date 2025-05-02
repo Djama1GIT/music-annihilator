@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Button,
@@ -10,7 +10,8 @@ import {
   Space,
   Typography,
   Upload,
-  UploadProps
+  UploadProps,
+  message
 } from "antd";
 import { DownloadOutlined, PauseCircleOutlined, PlayCircleOutlined, UploadOutlined } from "@ant-design/icons";
 import styles from "./Upload.module.scss";
@@ -31,7 +32,12 @@ const UploadComponent: React.FC = () => {
   const setProgress = useAnnihilatorStore(state => state.setProgress);
   const setIsPlaying = useAnnihilatorStore(state => state.setIsPlaying);
 
+  const [resultUrl, setResultUrl] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+  const [processingTime, setProcessingTime] = useState<number>(0);
+
   const audioRef = useRef<HTMLAudioElement>(null);
+  const processingStartTime = useRef<number>(0);
 
   const handleUpload: UploadProps['onChange'] = (info) => {
     let newFileList = [...info.fileList];
@@ -45,55 +51,140 @@ const UploadComponent: React.FC = () => {
     });
 
     setFileList(newFileList);
+    setError(null);
   };
 
-  const startProcessing = (): void => {
+  const startProcessing = async (): Promise<void> => {
     if (fileList.length === 0) return;
 
-    setIsUploading(true);
-    setProgress(0);
+    const file = fileList[0];
+    if (!file.originFileObj) return;
 
-    const uploadInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 50) {
-          clearInterval(uploadInterval);
-          setIsUploading(false);
-          startActualProcessing();
-          return 50;
-        }
-        return prev + 5;
+    setIsUploading(true);
+    setIsProcessing(true);
+    setProgress(10);
+    setError(null);
+    setResultUrl('');
+    processingStartTime.current = Date.now();
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file.originFileObj);
+      formData.append('filename', file.name);
+
+      // @ts-ignore
+      const response = await fetch(`${window.CONSTS.HOST}/api/v1/processing/spleeter-sse`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'text/event-stream',
+        },
       });
-    }, 300);
+
+      if (!response.ok || !response.body) {
+        throw new Error('Ошибка подключения к серверу');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      const readStream = async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n\n').filter(line => line.trim() !== '');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = JSON.parse(line.replace('data: ', ''));
+
+                if (data.error) {
+                  handleError(data.error);
+                  return;
+                }
+
+                if (data.progress !== undefined) {
+                  if (data.progress >= 50) {
+                    setIsProcessing(true);
+                    setIsUploading(false);
+                  }
+                  setProgress(data.progress);
+                }
+
+                if (data.result) {
+                  const result = data.result;
+                  if (result) {
+                    setResultUrl(result);
+                    setProcessingTime(Math.round((Date.now() - processingStartTime.current) / 1000));
+                  }
+                  setIsUploading(false);
+                  setIsProcessing(false);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          handleError(error instanceof Error ? error.message : String(error));
+        }
+      };
+
+      await readStream();
+
+    } catch (error) {
+      handleError(error instanceof Error ? error.message : String(error));
+    }
   };
 
-  const startActualProcessing = (): void => {
-    setIsProcessing(true);
-
-    const processingInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(processingInterval);
-          setIsProcessing(false);
-          return 100;
-        }
-        return prev + 1;
-      });
-    }, 200);
+  const handleError = (error: string) => {
+    console.error('Processing error:', error);
+    setError(error);
+    setIsUploading(false);
+    setIsProcessing(false);
+    setProgress(0);
+    message.error(`Ошибка обработки: ${error}`);
   };
 
   const togglePlayback = (): void => {
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
+        setIsPlaying(false);
       } else {
-        audioRef.current.play();
+        audioRef.current.play()
+          .then(() => setIsPlaying(true))
+          .catch(e => {
+            console.error('Playback error:', e);
+            message.error(`Ошибка воспроизведения: ${e.message}`);
+            setIsPlaying(false);
+          });
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
+    };
+  }, [resultUrl]);
+
   const downloadResult = (): void => {
-    alert('Загрузка результата обработки...');
+    if (!resultUrl) return;
+
+    // @ts-ignore
+    const downloadUrl = `${window.CONSTS.HOST}/api/v1/files/download-processed-file/?processed-filename=${resultUrl}&result-filename=vocals.mp3`;
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `vocals_${fileList[0]?.name || 'audio'}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const uploadProps: UploadProps = {
@@ -104,7 +195,12 @@ const UploadComponent: React.FC = () => {
     onChange: handleUpload,
     beforeUpload: () => false,
     className: styles.dragger,
-    disabled: isUploading || isProcessing
+    disabled: isUploading || isProcessing,
+    onRemove: () => {
+      setResultUrl('');
+      setProgress(0);
+      setError(null);
+    }
   };
 
   const progressStrokeColor = {
@@ -141,6 +237,18 @@ const UploadComponent: React.FC = () => {
                 isProcessing ? 'Обработка...' : 'Начать обработку'}
             </Button>
 
+            {error && (
+              <Alert
+                message="Ошибка обработки"
+                description={error}
+                type="error"
+                showIcon
+                closable
+                onClose={() => setError(null)}
+                className={styles.errorAlert}
+              />
+            )}
+
             {(isUploading || isProcessing) && (
               <div className={styles.progressContainer}>
                 <Text strong>
@@ -158,12 +266,12 @@ const UploadComponent: React.FC = () => {
               </div>
             )}
 
-            {progress === 100 && (
+            {progress === 100 && resultUrl && (
               <Alert
                 message={
                   <Space>
                     <span>Обработка завершена!</span>
-                    <Text type="success">Готово за 1 мин 23 сек</Text>
+                    <Text type="success">Готово за {processingTime} сек</Text>
                   </Space>
                 }
                 type="success"
@@ -182,7 +290,7 @@ const UploadComponent: React.FC = () => {
                       icon={<DownloadOutlined/>}
                       onClick={downloadResult}
                     >
-                      Скачать результат
+                      Скачать вокал
                     </Button>
                   </Space>
                 }
@@ -190,7 +298,18 @@ const UploadComponent: React.FC = () => {
               />
             )}
 
-            <audio ref={audioRef} src={fileList[0]?.url} className={styles.hiddenAudio}/>
+            {resultUrl && <audio
+              ref={audioRef}
+              // @ts-ignore
+              src={`${window.CONSTS.HOST}/api/v1/files/download-processed-file/?processed-filename=${resultUrl}&result-filename=vocals.mp3`}
+              className={styles.hiddenAudio}
+              preload="auto"
+              onError={(e) => {
+                console.error('Audio error:', e);
+                message.error('Ошибка загрузки аудиофайла');
+              }}
+              onEnded={() => setIsPlaying(false)}
+            />}
           </Space>
         </Card>
       </Col>
