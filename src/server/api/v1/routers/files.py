@@ -51,7 +51,9 @@ async def download_processed_file(
             response["Body"],
             media_type=response["ContentType"],
             headers={
-                "Content-Disposition": f"attachment; filename={s3_key.split('/')[-1]}",
+                "Content-Disposition":
+                    f"attachment; "
+                    f"filename={processed_filename}.{result_filename.split('.')[-1]}",
                 "Content-Length": str(response["ContentLength"]),
             },
         )
