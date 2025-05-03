@@ -39,6 +39,42 @@ const UploadComponent: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const processingStartTime = useRef<number>(0);
 
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const progressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Добавляем симуляцию прогресса только при старте обработки
+  useEffect(() => {
+    if ((isUploading || isProcessing) && progress < 100) {
+      // Очищаем предыдущие таймеры
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      if (progressTimeoutRef.current) clearTimeout(progressTimeoutRef.current);
+
+      // Запускаем новый интервал
+      progressIntervalRef.current = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 100) {
+            if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+            return 100;
+          }
+          return prev + 1;
+        });
+      }, 3000);
+
+      // Останавливаем через 30 секунд
+      progressTimeoutRef.current = setTimeout(() => {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+      }, 45000);
+
+      return () => {
+        if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+        if (progressTimeoutRef.current) clearTimeout(progressTimeoutRef.current);
+      };
+    }
+  }, [isUploading, isProcessing]);
+
   const handleUpload: UploadProps['onChange'] = (info) => {
     let newFileList = [...info.fileList];
 
@@ -111,6 +147,11 @@ const UploadComponent: React.FC = () => {
                     setIsProcessing(true);
                     setIsUploading(false);
                   }
+                  // Clear the simulated progress when we get real progress updates
+                  if (progressIntervalRef.current) {
+                    clearInterval(progressIntervalRef.current);
+                    progressIntervalRef.current = null;
+                  }
                   setProgress(data.progress);
                 }
 
@@ -144,6 +185,10 @@ const UploadComponent: React.FC = () => {
     setIsUploading(false);
     setIsProcessing(false);
     setProgress(0);
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
     message.error(`Ошибка обработки: ${error}`);
   };
 
@@ -169,6 +214,9 @@ const UploadComponent: React.FC = () => {
       if (audioRef.current) {
         audioRef.current.pause();
         setIsPlaying(false);
+      }
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
       }
     };
   }, [resultUrl]);
@@ -290,7 +338,7 @@ const UploadComponent: React.FC = () => {
                       icon={<DownloadOutlined/>}
                       onClick={downloadResult}
                     >
-                      Скачать вокал
+                      Скачать
                     </Button>
                   </Space>
                 }
