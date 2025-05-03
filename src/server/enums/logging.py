@@ -32,7 +32,7 @@ class LoggingLevelsEnum(Enum):
     DEBUG = "debug"
     NOTSET = "notset"
 
-    def __str__(self):
+    def __repr__(self):
         """
         Returns the string representation of the logging level.
 

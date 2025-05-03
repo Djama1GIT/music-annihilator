@@ -34,7 +34,7 @@ class AnnihilationProgressEnum(Enum):
     DONE = 100
     ERROR = 100
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         """
         Returns a human-readable string representation of the progress state.
 

@@ -49,7 +49,7 @@ class ProgressTracker:
         Returns:
             ProgressSSESchema: SSE-compatible progress update schema.
         """
-        self._log(f"Progress: {progress}% - {message}")
+        self._log(f"Progress: {progress} - {message}")
         return ProgressSSESchema(progress=progress, message=message)
 
     def result_update(self, result: str, message: Optional[str] = "") -> ResultSSESchema:
