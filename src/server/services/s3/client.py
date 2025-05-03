@@ -1,12 +1,12 @@
 from logging import Logger
 from typing import Optional
 
-import boto3
-from botocore.client import BaseClient
-from botocore.exceptions import ClientError, EndpointConnectionError
+import boto3  # type: ignore[import-untyped]
+from botocore.client import BaseClient  # type: ignore[import-untyped]
+from botocore.exceptions import ClientError, EndpointConnectionError  # type: ignore[import-untyped]
 
 from src.server.config import Settings
-from src.server.enums.logger import LoggerLevelsEnum
+from src.server.enums.logging import LoggingLevelsEnum
 
 
 class S3Client:
@@ -26,21 +26,21 @@ class S3Client:
         _logger (Logger): Logger instance for operation tracking
     """
 
-    def __init__(self, logger: Logger = None):
+    def __init__(self, logger: Optional[Logger] = None):
         """Initialize the S3 client manager in unconfigured state."""
         self._client: Optional[BaseClient] = None
         self._settings: Optional[Settings] = None
         self._logger = logger
         self._log(
             message="S3Client initialized with no settings and no client",
-            level=LoggerLevelsEnum.DEBUG,
+            level=LoggingLevelsEnum.DEBUG,
         )
 
     def _log(
         self,
         message: str,
         *,
-        level: LoggerLevelsEnum = LoggerLevelsEnum.INFO,
+        level: LoggingLevelsEnum = LoggingLevelsEnum.INFO,
         exc_info=False,
     ):
         """
@@ -48,7 +48,7 @@ class S3Client:
 
         Parameters:
             message (str): Log message content
-            level (LoggerLevelsEnum): Log severity level. Defaults to INFO.
+            level (LoggingLevelsEnum): Log severity level. Defaults to INFO.
             exc_info (bool): Whether to include exception info. Defaults to False.
         """
         if self._logger:
@@ -68,7 +68,7 @@ class S3Client:
         initialized = self._client is not None
         self._log(
             f"Checking if client is initialized: {initialized}",
-            level=LoggerLevelsEnum.DEBUG,
+            level=LoggingLevelsEnum.DEBUG,
         )
         return initialized
 
@@ -104,12 +104,12 @@ class S3Client:
         """
         if self._settings is None:
             error_msg = "Settings must be initialized before creating client"
-            self._log(error_msg, level=LoggerLevelsEnum.ERROR)
+            self._log(error_msg, level=LoggingLevelsEnum.ERROR)
             raise ValueError(error_msg)
 
         self._log(
             f"Creating new S3 client with endpoint: {self._settings.S3_ENDPOINT_URL}",
-            level=LoggerLevelsEnum.DEBUG,
+            level=LoggingLevelsEnum.DEBUG,
         )
         try:
             self._client = boto3.client(
@@ -123,7 +123,7 @@ class S3Client:
         except Exception as e:
             self._log(
                 message=f"Failed to create S3 client: {str(e)}",
-                level=LoggerLevelsEnum.ERROR,
+                level=LoggingLevelsEnum.ERROR,
             )
             raise RuntimeError(f"Failed to create S3 client: {str(e)}")
 
@@ -137,7 +137,7 @@ class S3Client:
         """
         if self._client is None or self._settings is None:
             error_msg = "Client and settings must be initialized"
-            self._log(error_msg, level=LoggerLevelsEnum.ERROR)
+            self._log(error_msg, level=LoggingLevelsEnum.ERROR)
             raise ValueError(error_msg)
 
         bucket_name = self._settings.S3_BUCKET
@@ -149,7 +149,7 @@ class S3Client:
             ]
             self._log(
                 message=f"Existing buckets: {existing_buckets}",
-                level=LoggerLevelsEnum.DEBUG,
+                level=LoggingLevelsEnum.DEBUG,
             )
 
             if bucket_name not in existing_buckets:
@@ -159,12 +159,12 @@ class S3Client:
             else:
                 self._log(
                     message=f"Bucket {bucket_name} already exists",
-                    level=LoggerLevelsEnum.DEBUG,
+                    level=LoggingLevelsEnum.DEBUG,
                 )
         except (ClientError, EndpointConnectionError) as e:
             self._log(
                 message=f"Error checking/creating bucket {bucket_name}: {str(e)}",
-                level=LoggerLevelsEnum.ERROR,
+                level=LoggingLevelsEnum.ERROR,
             )
             raise RuntimeError(
                 f"Error checking/creating bucket {bucket_name}: {str(e)}"
@@ -172,7 +172,7 @@ class S3Client:
         except Exception as e:
             self._log(
                 message=f"Unexpected error during bucket verification: {str(e)}",
-                level=LoggerLevelsEnum.ERROR,
+                level=LoggingLevelsEnum.ERROR,
             )
             raise RuntimeError(f"Unexpected error during bucket verification: {str(e)}")
 
@@ -189,7 +189,7 @@ class S3Client:
         if self._client is None:
             if self._settings is None:
                 error_msg = "S3 client not initialized"
-                self._log(error_msg, level=LoggerLevelsEnum.ERROR)
+                self._log(error_msg, level=LoggingLevelsEnum.ERROR)
                 raise ValueError(error_msg)
 
             self._log("Client is None, reinitializing...")
@@ -206,25 +206,31 @@ class S3Client:
         """
         self._log(
             message="Checking S3 connection",
-            level=LoggerLevelsEnum.DEBUG,
+            level=LoggingLevelsEnum.DEBUG,
         )
+        if self._client is None:
+            self._log(
+                message="S3 client not initialized",
+                level=LoggingLevelsEnum.ERROR,
+            )
+            raise ValueError("S3 client not initialized")
         try:
             self._client.list_buckets()
             self._log(
                 message="S3 connection check successful",
-                level=LoggerLevelsEnum.DEBUG,
+                level=LoggingLevelsEnum.DEBUG,
             )
             return True
         except (ClientError, EndpointConnectionError) as e:
             self._log(
                 message=f"S3 connection check failed: {str(e)}",
-                level=LoggerLevelsEnum.WARNING,
+                level=LoggingLevelsEnum.WARNING,
             )
             return False
         except Exception as e:
             self._log(
                 f"Unexpected error during connection check: {str(e)}",
-                level=LoggerLevelsEnum.ERROR,
+                level=LoggingLevelsEnum.ERROR,
             )
             return False
 
@@ -238,7 +244,7 @@ class S3Client:
         if not self.check_connection():
             self._log(
                 message="S3 connection lost, attempting to reconnect...",
-                level=LoggerLevelsEnum.WARNING,
+                level=LoggingLevelsEnum.WARNING,
             )
             try:
                 self._reinitialize_client()
@@ -247,11 +253,11 @@ class S3Client:
             except Exception as e:
                 self._log(
                     message=f"Failed to reconnect: {str(e)}",
-                    level=LoggerLevelsEnum.ERROR,
+                    level=LoggingLevelsEnum.ERROR,
                 )
                 return False
         self._log(
             message="No reconnection needed",
-            level=LoggerLevelsEnum.DEBUG,
+            level=LoggingLevelsEnum.DEBUG,
         )
         return False

@@ -1,10 +1,10 @@
 import asyncio
 import tempfile
 from pathlib import Path
-from typing import Dict, AsyncGenerator
+from typing import Dict, AsyncGenerator, Optional
 
 from src.server.annihilator.progress_tracker import ProgressTracker
-from src.server.enums.logger import LoggerLevelsEnum
+from src.server.enums.logging import LoggingLevelsEnum
 from src.server.enums.progress import AnnihilationProgressEnum
 from src.server.logger import logger
 from src.server.schemas.annihilator_sse import ProgressSSESchema
@@ -53,7 +53,7 @@ class Spleeter:
         self,
         message: str,
         *,
-        level: LoggerLevelsEnum = LoggerLevelsEnum.INFO,
+        level: LoggingLevelsEnum = LoggingLevelsEnum.INFO,
         exc_info: bool = False,
     ) -> None:
         """
@@ -61,7 +61,7 @@ class Spleeter:
 
         Parameters:
             message (str): Message to log
-            level (LoggerLevelsEnum): Logging level (default: INFO)
+            level (LoggingLevelsEnum): Logging level (default: INFO)
             exc_info (bool): Whether to include exception info (default: False)
         """
         if self.logger:
@@ -70,7 +70,7 @@ class Spleeter:
                 exc_info=exc_info,
             )
 
-    async def _run_spleeter_command(self, input_path: Path, output_dir: Path) -> int:
+    async def _run_spleeter_command(self, input_path: Path, output_dir: Path) -> Optional[int]:
         """
         Execute the spleeter command asynchronously and return the exit code.
 
@@ -217,7 +217,7 @@ class Spleeter:
             except Exception as e:
                 self._log(
                     message=f"Error during processing: {str(e)}",
-                    level=LoggerLevelsEnum.ERROR,
+                    level=LoggingLevelsEnum.ERROR,
                     exc_info=True,
                 )
                 yield self.progress_tracker.error_update(error=str(e))

@@ -12,4 +12,4 @@ def get_settings() -> Settings:
         Settings: An instance of the application Settings class containing all
         configuration parameters loaded from environment variables and .env files.
     """
-    return Settings()
+    return Settings()  # type: ignore[call-arg]

@@ -1,11 +1,11 @@
 from logging import Logger
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
-from botocore.client import BaseClient
-from botocore.exceptions import ClientError
+from botocore.client import BaseClient  # type: ignore[import-untyped]
+from botocore.exceptions import ClientError  # type: ignore[import-untyped]
 
-from src.server.enums.logger import LoggerLevelsEnum
+from src.server.enums.logging import LoggingLevelsEnum
 
 
 class S3Uploader:
@@ -26,7 +26,7 @@ class S3Uploader:
         logger (Logger): Optional logger for operation tracking
     """
 
-    def __init__(self, s3_client: BaseClient, s3_bucket: str, logger: Logger = None):
+    def __init__(self, s3_client: BaseClient, s3_bucket: str, logger: Optional[Logger] = None):
         """Initialize the S3 uploader with client, bucket and optional logger."""
         self.s3_client = s3_client
         self.s3_bucket = s3_bucket
@@ -36,7 +36,7 @@ class S3Uploader:
         self,
         message: str,
         *,
-        level: LoggerLevelsEnum = LoggerLevelsEnum.INFO,
+        level: LoggingLevelsEnum = LoggingLevelsEnum.INFO,
         exc_info: bool = False,
     ):
         """
@@ -77,7 +77,7 @@ class S3Uploader:
         except ClientError as e:
             self._log(
                 message=f"S3 upload error for {file_path}: {str(e)}",
-                level=LoggerLevelsEnum.ERROR,
+                level=LoggingLevelsEnum.ERROR,
                 exc_info=True,
             )
             return False
@@ -85,7 +85,7 @@ class S3Uploader:
         except Exception as e:
             self._log(
                 message=f"Unexpected error during S3 upload: {str(e)}",
-                level=LoggerLevelsEnum.ERROR,
+                level=LoggingLevelsEnum.ERROR,
                 exc_info=True,
             )
             return False

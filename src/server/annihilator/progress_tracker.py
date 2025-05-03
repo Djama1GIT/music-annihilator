@@ -1,7 +1,7 @@
 from logging import Logger
 from typing import Optional
 
-from src.server.enums.logger import LoggerLevelsEnum
+from src.server.enums.logging import LoggingLevelsEnum
 from src.server.enums.progress import AnnihilationProgressEnum
 from src.server.schemas.annihilator_sse import ResultSSESchema, ErrorSSESchema, ProgressSSESchema
 
@@ -17,7 +17,7 @@ class ProgressTracker:
         logger (Logger): Optional logger instance for tracking progress and errors.
     """
 
-    def __init__(self, logger: Logger = None) -> None:
+    def __init__(self, logger: Optional[Logger] = None) -> None:
         """
         Initialize the ProgressTracker with an optional logger.
 
@@ -27,7 +27,7 @@ class ProgressTracker:
         """
         self.logger = logger
 
-    def _log(self, message: str, *, level: LoggerLevelsEnum = LoggerLevelsEnum.INFO, exc_info=False):
+    def _log(self, message: str, *, level: LoggingLevelsEnum = LoggingLevelsEnum.INFO, exc_info=False):
         """
         Internal method for consistent logging with class name prefix.
 
@@ -76,5 +76,5 @@ class ProgressTracker:
         Returns:
             ErrorSSESchema: SSE-compatible error schema.
         """
-        self._log(f"Error: {error}", level=LoggerLevelsEnum.ERROR)
+        self._log(f"Error: {error}", level=LoggingLevelsEnum.ERROR)
         return ErrorSSESchema(error=error)

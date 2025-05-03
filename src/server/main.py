@@ -10,7 +10,7 @@ from src.server.api.v1.routers.processing import router as processing_router_v1
 from src.server.api.v1.routers.files import router as files_router_v1
 
 # Load application configuration
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]
 
 # Initialize main FastAPI application with metadata from settings
 app = FastAPI(

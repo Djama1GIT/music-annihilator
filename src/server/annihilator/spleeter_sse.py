@@ -1,7 +1,7 @@
 from typing import AsyncGenerator
 
 from src.server.annihilator.spleeter import Spleeter
-from src.server.enums.logger import LoggerLevelsEnum
+from src.server.enums.logging import LoggingLevelsEnum
 
 
 class SpleeterSSE(Spleeter):
@@ -38,7 +38,7 @@ class SpleeterSSE(Spleeter):
         try:
             self._log(
                 message="Starting SSE event generator",
-                level=LoggerLevelsEnum.DEBUG,
+                level=LoggingLevelsEnum.DEBUG,
             )
 
             # Process audio and generate progress updates
@@ -49,7 +49,7 @@ class SpleeterSSE(Spleeter):
             ):
                 self._log(
                     message=f"Yielding progress update: {sse_update}",
-                    level=LoggerLevelsEnum.DEBUG,
+                    level=LoggingLevelsEnum.DEBUG,
                 )
                 yield f"data: {sse_update.model_dump_json(exclude_none=True)}\n\n"
 
@@ -58,7 +58,7 @@ class SpleeterSSE(Spleeter):
         except Exception as exc:
             self._log(
                 message=f"Error during audio processing: {str(exc)}",
-                level=LoggerLevelsEnum.ERROR,
+                level=LoggingLevelsEnum.ERROR,
                 exc_info=True,
             )
             yield f'data: {{"error": "{str(exc)}"}}\n\n'
@@ -66,6 +66,6 @@ class SpleeterSSE(Spleeter):
         finally:
             self._log(
                 message="Closing SSE stream",
-                level=LoggerLevelsEnum.DEBUG,
+                level=LoggingLevelsEnum.DEBUG,
             )
             yield "event: close\n\n"

@@ -1,6 +1,6 @@
 from typing import Callable
 
-from botocore.client import BaseClient
+from botocore.client import BaseClient  # type: ignore[import-untyped]
 from fastapi import Depends
 
 from src.server.config import Settings
