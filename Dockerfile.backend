@@ -1,17 +1,19 @@
-FROM python:3.8
+FROM python:3.10
 
-RUN mkdir -p /app/files
+RUN mkdir -p /app/src/server/
 
-WORKDIR /app
+WORKDIR /app/src/server
 
 COPY src/server ./
 
-RUN pip install -r requirements.txt
+RUN apt-get update && apt-get install -y ffmpeg
 
-COPY . .
+RUN pip install --upgrade pip
+
+RUN pip install -r requirements.txt
 
 EXPOSE 8000
 
 WORKDIR /app
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "src.server.main:app", "--host", "0.0.0.0", "--port", "8000"]

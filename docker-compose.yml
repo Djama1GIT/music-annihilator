@@ -6,11 +6,15 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=s3 
+      - SERVICES=s3
+      - DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
       - DEBUG=1
       - DATA_DIR=/var/lib/localstack/data
     env_file:
       - .env
+      - .env-non-dev
     volumes:
       - ./.localstack:/var/lib/localstack
       - /var/run/docker.sock:/var/run/docker.sock
@@ -25,8 +29,17 @@ services:
     restart: always
     env_file:
       - .env
+      - .env-non-dev
     depends_on:
       - localstack
+    deploy:
+      resources:
+        limits:
+          cpus: '12'
+          memory: 12GB
+        reservations:
+          cpus: '6'
+          memory: 8GB
 
   frontend:
     build:
@@ -38,4 +51,5 @@ services:
     restart: always
     env_file:
       - .env
+      - .env-non-dev
  

@@ -72,7 +72,7 @@ class Spleeter:
 
     async def _run_spleeter_command(self, input_path: Path, output_dir: Path) -> Optional[int]:
         """
-        Execute the spleeter command asynchronously and return the exit code.
+        Execute the spleeter command asynchronously and return the exit code with full logging.
 
         Parameters:
             input_path (Path): Path to input audio file
@@ -98,19 +98,56 @@ class Spleeter:
             "-f",
             "{instrument}.{codec}",
             str(input_path),
+            "--verbose"
         ]
 
-        self._log(f"Executing command: {' '.join(cmd)}")
+        self._log(f"Starting separation process")
+        self._log(f"Input file: {input_path}")
+        self._log(f"Output directory: {output_dir}")
+        self._log(f"Model: {self.model}")
+        self._log(f"Codec: {self.codec}")
+        self._log(f"Bitrate: {self.bitrate}")
+        self._log(f"Full command: {' '.join(cmd)}")
 
-        # Create subprocess and run asynchronously
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
+        try:
+            # Create subprocess and run asynchronously
+            self._log("Creating subprocess...")
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            self._log(f"Subprocess created with PID: {process.pid}")
 
-        await process.wait()
-        return process.returncode
+            # Log stdout and stderr in real-time
+            async def log_stream(stream, stream_name):
+                while True:
+                    line = await stream.readline()
+                    if not line:
+                        break
+                    self._log(f"{stream_name}: {line.decode().strip()}")
+
+            # Create tasks for logging both streams
+            stdout_task = asyncio.create_task(log_stream(process.stdout, "STDOUT"))
+            stderr_task = asyncio.create_task(log_stream(process.stderr, "STDERR"))
+
+            self._log("Waiting for process completion...")
+            return_code = await process.wait()
+            self._log(f"Process completed with return code: {return_code}")
+
+            # Wait for all output to be logged
+            await asyncio.wait([stdout_task, stderr_task])
+
+            if return_code != 0:
+                self._log("Warning: Process finished with non-zero exit code")
+            else:
+                self._log("Separation completed successfully")
+
+            return return_code
+
+        except Exception as e:
+            self._log(f"Error during processing: {str(e)}")
+            raise
 
     @staticmethod
     def _get_output_files(output_dir: Path) -> Dict[str, Path]:

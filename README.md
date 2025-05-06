@@ -18,18 +18,6 @@ cd music-annihilator
 docker-compose up --build
 ```
 
-or<sup>* (it is assumed that you also have npm and Python installed)</sup>
-
-```bash
-make install
-```
-```bash
-make frontend-run
-```
-```bash
-make backend-run
-```
-
 ## User Interface
 Home page:
 
@@ -51,6 +39,4 @@ http://localhost/
 
 - refactoring
 - tests
-- docker
-- makefile
 - fix readme
