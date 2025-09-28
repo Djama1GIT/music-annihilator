@@ -14,13 +14,13 @@ import {
   message
 } from "antd";
 import { DownloadOutlined, PauseCircleOutlined, PlayCircleOutlined, UploadOutlined } from "@ant-design/icons";
-import styles from "./Upload.module.scss";
+import styles from "./UploadAndProcess.module.scss";
 
 import { useAnnihilatorStore } from "../../../../store";
 
 const { Text, Title } = Typography;
 
-const UploadComponent: React.FC = () => {
+const UploadAndProcessComponent: React.FC = () => {
   const fileList = useAnnihilatorStore(state => state.fileList);
   const isUploading = useAnnihilatorStore(state => state.isUploading);
   const isProcessing = useAnnihilatorStore(state => state.isProcessing);
@@ -229,7 +229,6 @@ const UploadComponent: React.FC = () => {
 
     const link = document.createElement('a');
     link.href = downloadUrl;
-    link.download = `vocals_${fileList[0]?.name || 'audio'}.mp3`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -365,4 +364,4 @@ const UploadComponent: React.FC = () => {
   );
 };
 
-export default React.memo(UploadComponent);
+export default React.memo(UploadAndProcessComponent);

@@ -5,9 +5,8 @@ from fastapi.responses import JSONResponse
 
 from pydantic import ValidationError
 
+from src.server.api import main_api_router
 from src.server.config import Settings
-from src.server.api.v1.routers.processing import router as processing_router_v1
-from src.server.api.v1.routers.files import router as files_router_v1
 
 # Load application configuration
 settings = Settings()  # type: ignore[call-arg]
@@ -22,9 +21,6 @@ app = FastAPI(
     license_info=settings.LICENSE_INFO,
 )
 
-# Initialize API v1 application
-v1 = FastAPI()
-
 # Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,  # type: ignore
@@ -34,16 +30,7 @@ app.add_middleware(
     allow_headers=settings.ALLOW_HEADERS,
 )
 
-# Include routers for latest API version
-app.include_router(processing_router_v1, prefix="/api/latest")
-app.include_router(files_router_v1, prefix="/api/latest")
-
-# Include routers for v1 API
-v1.include_router(processing_router_v1)
-v1.include_router(files_router_v1)
-
-# Mount v1 application under /api/v1 path
-app.mount("/api/v1", v1)
+app.include_router(main_api_router, prefix="/api")
 
 
 # noinspection PyUnusedLocal

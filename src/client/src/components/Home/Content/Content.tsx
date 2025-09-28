@@ -4,7 +4,7 @@ import styles from './Content.module.scss';
 import { Layout } from "antd";
 
 import Title from "./Title/Title";
-import Upload from "./Upload/Upload";
+import UploadAndProcess from "./UploadAndProcess/UploadAndProcess";
 import Features from "./Features/Features";
 
 const { Content } = Layout;
@@ -13,7 +13,7 @@ const ContentComponent: React.FC = () => {
   return (
     <Content className={styles.content}>
       <Title />
-      <Upload />
+      <UploadAndProcess />
       <Features />
     </Content>
   );

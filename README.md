@@ -35,6 +35,29 @@ http://localhost/
 - LocalStack - A cloud service emulator that runs in a container, providing a local AWS environment for development and testing.
 - Docker - A platform used in the project for creating, deploying, and managing containers, allowing the application to run in an isolated environment.
 
+# Contributors
+
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%">
+        <a href="https://github.com/Djama1GIT">
+          <img src="https://avatars.githubusercontent.com/u/89941580?v=4?s=130" height="130px;" alt="Djama1GIT"/>
+          <br />
+          <sub><b>Djama1GIT</b></sub>
+        </a>
+      </td>
+      <td align="center" valign="top" width="14.28%">
+        <a href="https://github.com/alibekovvl">
+          <img src="https://avatars.githubusercontent.com/u/126617833?v=4?s=130" height="130px;" alt="alibekovvl"/>
+            <br />
+          <sub><b>alibekovvl</b></sub>
+        </a>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 # TODO:
 
 - refactoring
