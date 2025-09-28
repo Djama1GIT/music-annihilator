@@ -1,12 +1,9 @@
-from fastapi import FastAPI, status, Request
-from fastapi.encoders import jsonable_encoder
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-
-from pydantic import ValidationError
 
 from src.server.api import main_api_router
 from src.server.config import Settings
+from src.server.errors.handlers import exception_handlers
 
 # Load application configuration
 settings = Settings()  # type: ignore[call-arg]
@@ -19,6 +16,7 @@ app = FastAPI(
     summary=settings.SUMMARY,
     contact=settings.CONTACT,
     license_info=settings.LICENSE_INFO,
+    exception_handlers=exception_handlers,
 )
 
 # Configure CORS middleware
@@ -31,47 +29,3 @@ app.add_middleware(
 )
 
 app.include_router(main_api_router, prefix="/api")
-
-
-# noinspection PyUnusedLocal
-@app.exception_handler(Exception)
-async def exception_error(
-        request: Request,
-        exc: Exception,
-) -> JSONResponse:
-    """
-    Global exception handler for all uncaught exceptions.
-
-    Parameters:
-        request: The incoming request (unused)
-        exc: The exception that was raised
-
-    Returns:
-        JSONResponse: 500 error response with exception details
-    """
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=jsonable_encoder({"detail": str(exc)}),
-    )
-
-
-# noinspection PyUnusedLocal
-@app.exception_handler(ValidationError)
-async def validation_exception_error(
-    request: Request,
-    exc: ValidationError,
-) -> JSONResponse:
-    """
-    Handler for Pydantic validation errors.
-
-    Parameters:
-        request: The incoming request (unused)
-        exc: The validation error that occurred
-
-    Returns:
-        JSONResponse: 422 error response with validation error details
-    """
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder({"detail": exc.errors()}),
-    )
