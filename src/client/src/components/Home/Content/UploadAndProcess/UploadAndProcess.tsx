@@ -108,8 +108,7 @@ const UploadAndProcessComponent: React.FC = () => {
       formData.append('file', file.originFileObj);
       formData.append('filename', file.name);
 
-      // @ts-ignore
-      const response = await fetch(`${window.CONSTS.HOST}/api/v1/processing/spleeter-sse`, {
+      const response = await fetch('/api/v1/processing/spleeter-sse', {
         method: 'POST',
         body: formData,
         headers: {
@@ -224,8 +223,7 @@ const UploadAndProcessComponent: React.FC = () => {
   const downloadResult = (): void => {
     if (!resultUrl) return;
 
-    // @ts-ignore
-    const downloadUrl = `${window.CONSTS.HOST}/api/v1/files/download-processed-file/?processed-filename=${resultUrl}&result-filename=vocals.mp3`;
+    const downloadUrl = `/api/v1/files/download-processed-file/?processed-filename=${resultUrl}&result-filename=vocals.mp3`;
 
     const link = document.createElement('a');
     link.href = downloadUrl;
@@ -347,8 +345,7 @@ const UploadAndProcessComponent: React.FC = () => {
 
             {resultUrl && <audio
               ref={audioRef}
-              // @ts-ignore
-              src={`${window.CONSTS.HOST}/api/v1/files/download-processed-file/?processed-filename=${resultUrl}&result-filename=vocals.mp3`}
+              src={`/api/v1/files/download-processed-file/?processed-filename=${resultUrl}&result-filename=vocals.mp3`}
               className={styles.hiddenAudio}
               preload="auto"
               onError={(e) => {

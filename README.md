@@ -20,8 +20,10 @@ docker-compose up --build
 
 ## User Interface
 Home page:
+http://localhost/
 
-http://localhost/ 
+Dashboard:
+http://localhost/grafana/ (admin/admin)
 
 ## Technologies Used
 
@@ -34,6 +36,11 @@ http://localhost/
 - S3 - Simple Storage Service (S3), an object storage service used in the project for storing and retrieving files.
 - LocalStack - A cloud service emulator that runs in a container, providing a local AWS environment for development and testing.
 - Docker - A platform used in the project for creating, deploying, and managing containers, allowing the application to run in an isolated environment.
+- Prometheus - An open-source systems monitoring and alerting toolkit that collects and stores metrics as time series data.
+- Grafana - A multi-platform open-source analytics and interactive visualization web application for monitoring and observability.
+- Loki - A horizontally-scalable, highly-available, multi-tenant log aggregation system inspired by Prometheus.
+- Promtail - An agent that ships the contents of local logs to a Loki instance, typically deployed to every machine running applications.
+- Nginx - A high-performance web server, reverse proxy, and load balancer used for serving web content and routing traffic.
 
 # Contributors
 

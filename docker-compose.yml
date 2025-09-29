@@ -1,51 +1,68 @@
+networks:
+  annihilator:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: "172.20.0.0/24"
+
 services:
   promtail:
     image: grafana/promtail:latest
-    container_name: promtail
+    container_name: annihilator_promtail
     ports:
-      - "9080:9080"
+      - "9080"
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro,rshared
       - /var/run/docker.sock:/var/run/docker.sock
       - ./promtail-config.yaml:/etc/promtail/config.yml
     command: -config.file=/etc/promtail/config.yml
     privileged: true
+    networks:
+      - annihilator
 
   loki:
     image: grafana/loki:latest
-    container_name: loki
+    container_name: annihilator_loki
     ports:
-      - "3100:3100"
+      - "3100"
     volumes:
       - ./loki-config.yaml:/etc/loki/local-config.yaml
+    networks:
+      - annihilator
 
   prometheus:
     image: prom/prometheus:latest
-    container_name: prometheus
+    container_name: annihilator_prometheus
     ports:
-      - "9090:9090"
+      - "9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheusdata:/prometheus
+    networks:
+      - annihilator
 
   grafana:
     image: grafana/grafana:latest
-    container_name: grafana
+    container_name: annihilator_grafana
     ports:
-      - "3000:3000"
+      - "3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
     volumes:
       - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - grafanadata:/var/lib/grafana
+    networks:
+      - annihilator
 
   localstack:
     image: localstack/localstack:latest
     container_name: annihilator_localstack
     restart: always
     ports:
-      - "4566:4566"
+      - "4566"
     environment:
       - SERVICES=s3
       - DEFAULT_REGION=us-east-1
@@ -59,6 +76,8 @@ services:
     volumes:
       - localstackdata:/var/lib/localstack
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - annihilator
 
   backend:
     build:
@@ -66,7 +85,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: annihilator_backend
     ports:
-      - "8000:8000"
+      - "8000"
     restart: always
     env_file:
       - .env
@@ -85,18 +104,28 @@ services:
         reservations:
           cpus: '6'
           memory: 8GB
+    networks:
+      - annihilator
 
-  frontend:
+  nginx:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
-    container_name: annihilator_frontend
+      dockerfile: Dockerfile.nginx
+    container_name: annihilator_nginx
     ports:
       - "80:80"
+    depends_on:
+      - backend
+      - grafana
+      - loki
+      - promtail
+      - prometheus
     restart: always
     env_file:
       - .env
       - .env-non-dev
+    networks:
+      - annihilator
 
 volumes:
   grafanadata:
