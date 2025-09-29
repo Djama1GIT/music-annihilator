@@ -42,6 +42,8 @@ oauthlib==3.2.2
 opt_einsum==3.4.0
 packaging==25.0
 pandas==1.5.3
+prometheus-fastapi-instrumentator==5.11.2
+prometheus_client==0.21.1
 protobuf==3.19.6
 pyasn1==0.6.1
 pyasn1_modules==0.4.2

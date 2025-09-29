@@ -167,7 +167,7 @@ class S3Client:
                 level=LoggingLevelsEnum.ERROR,
             )
             raise RuntimeError(
-                f"Error checking/creating bucket {bucket_name}: {str(e)}"
+                f"Error checking/creating bucket {bucket_name}: {str(e)}"  # fixme убрать подробности
             )
         except Exception as e:
             self._log(

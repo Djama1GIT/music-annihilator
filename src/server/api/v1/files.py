@@ -15,8 +15,8 @@ router = APIRouter(
 
 @router.get("/download-processed-file/")
 async def download_processed_file(
-    processed_filename: str = Query(alias="processed-filename"),
-    result_filename: str = Query(alias="result-filename"),
+    processed_filename: str = Query(alias="processed-filename", min_length=1),
+    result_filename: str = Query(alias="result-filename", min_length=1),
     s3: BaseClient = Depends(get_s3_client(get_settings)),
     settings: Settings = Depends(get_settings),
 ) -> StreamingResponse:
