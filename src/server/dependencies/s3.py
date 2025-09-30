@@ -1,11 +1,13 @@
+import logging
 from typing import Callable, Generator
 
 from botocore.client import BaseClient  # type: ignore[import-untyped]
 from fastapi import Depends
 
-from src.server.config import Settings
-from src.server.logger import logger
+from src.server.core.config import Settings
 from src.server.services.s3.client import S3Client
+
+logger = logging.getLogger(__name__)
 
 # Global S3 client instance with lazy initialization
 _s3_client = S3Client(logger=logger)

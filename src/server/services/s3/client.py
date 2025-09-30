@@ -5,7 +5,7 @@ import boto3  # type: ignore[import-untyped]
 from botocore.client import BaseClient  # type: ignore[import-untyped]
 from botocore.exceptions import ClientError, EndpointConnectionError  # type: ignore[import-untyped]
 
-from src.server.config import Settings
+from src.server.core.config import Settings
 from src.server.enums.logging import LoggingLevelsEnum
 from src.server.errors.s3 import S3InitializingError, BucketError, S3FileNotFound
 

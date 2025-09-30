@@ -3,11 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.server.api import main_api_router
-from src.server.config import Settings
+from src.server.core.config import Settings
 from src.server.errors.handlers import exception_handlers
+from src.server.core.logger import configure_logging
 
 # Load application configuration
 settings = Settings()  # type: ignore[call-arg]
+
+# Configure application logging
+configure_logging(settings=settings)
 
 # Initialize main FastAPI application with metadata from settings
 app = FastAPI(

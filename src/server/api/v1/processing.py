@@ -1,3 +1,4 @@
+import logging
 from uuid import uuid4
 
 from botocore.client import BaseClient  # type: ignore[import-untyped]
@@ -5,10 +6,11 @@ from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 
 from src.server.annihilator.spleeter_sse import SpleeterSSE
-from src.server.config import Settings
+from src.server.core.config import Settings
 from src.server.dependencies.settings import get_settings
 from src.server.dependencies.s3 import get_s3_client
-from src.server.logger import logger
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/processing",

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import tempfile
 from pathlib import Path
 from typing import Dict, AsyncGenerator, Optional
@@ -7,9 +8,10 @@ from src.server.annihilator.progress_tracker import ProgressTracker
 from src.server.enums.logging import LoggingLevelsEnum
 from src.server.enums.progress import AnnihilationProgressEnum
 from src.server.errors.spleeter import SpleeterError
-from src.server.logger import logger
 from src.server.schemas.annihilator_sse import ProgressSSESchema
 from src.server.services.s3.uploader import S3Uploader
+
+logger = logging.getLogger(__name__)
 
 
 class Spleeter:

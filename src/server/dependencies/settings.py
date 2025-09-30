@@ -1,4 +1,4 @@
-from src.server.config import Settings
+from src.server.core.config import Settings
 
 
 def get_settings() -> Settings:
