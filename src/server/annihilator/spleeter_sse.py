@@ -2,6 +2,7 @@ from typing import AsyncGenerator
 
 from src.server.annihilator.spleeter import Spleeter
 from src.server.enums.logging import LoggingLevelsEnum
+from src.server.errors.spleeter import SpleeterError
 
 
 class SpleeterSSE(Spleeter):
@@ -55,13 +56,21 @@ class SpleeterSSE(Spleeter):
 
             self._log("Audio processing completed successfully")
 
-        except Exception as exc:
+        except SpleeterError as exc:
             self._log(
-                message=f"Error during audio processing: {str(exc)}",
+                message=f"An spleeter error occurred during audio processing: {str(exc)}",
                 level=LoggingLevelsEnum.ERROR,
                 exc_info=True,
             )
-            yield f'data: {{"error": "{str(exc)}"}}\n\n'
+            yield f'data: {{"error": "Annihilator processing failed"}}\n\n'
+
+        except Exception as exc:
+            self._log(
+                message=f"An error occurred during audio processing: {str(exc)}",
+                level=LoggingLevelsEnum.ERROR,
+                exc_info=True,
+            )
+            yield f'data: {{"error": "Internal Server Error"}}\n\n'
 
         finally:
             self._log(

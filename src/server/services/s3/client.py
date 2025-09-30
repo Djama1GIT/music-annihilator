@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import Optional
+from typing import Optional, Generator
 
 import boto3  # type: ignore[import-untyped]
 from botocore.client import BaseClient  # type: ignore[import-untyped]
@@ -7,6 +7,7 @@ from botocore.exceptions import ClientError, EndpointConnectionError  # type: ig
 
 from src.server.config import Settings
 from src.server.enums.logging import LoggingLevelsEnum
+from src.server.errors.s3 import S3InitializingError, BucketError, S3FileNotFound
 
 
 class S3Client:
@@ -105,7 +106,7 @@ class S3Client:
         if self._settings is None:
             error_msg = "Settings must be initialized before creating client"
             self._log(error_msg, level=LoggingLevelsEnum.ERROR)
-            raise ValueError(error_msg)
+            raise S3InitializingError(error_msg)
 
         self._log(
             f"Creating new S3 client with endpoint: {self._settings.S3_ENDPOINT_URL}",
@@ -125,7 +126,7 @@ class S3Client:
                 message=f"Failed to create S3 client: {str(e)}",
                 level=LoggingLevelsEnum.ERROR,
             )
-            raise RuntimeError(f"Failed to create S3 client: {str(e)}")
+            raise S3InitializingError(f"Failed to create S3 client") from e
 
     def _ensure_bucket_exists(self) -> None:
         """
@@ -138,7 +139,7 @@ class S3Client:
         if self._client is None or self._settings is None:
             error_msg = "Client and settings must be initialized"
             self._log(error_msg, level=LoggingLevelsEnum.ERROR)
-            raise ValueError(error_msg)
+            raise S3InitializingError(error_msg)
 
         bucket_name = self._settings.S3_BUCKET
         self._log(f"Checking bucket existence: {bucket_name}")
@@ -166,17 +167,15 @@ class S3Client:
                 message=f"Error checking/creating bucket {bucket_name}: {str(e)}",
                 level=LoggingLevelsEnum.ERROR,
             )
-            raise RuntimeError(
-                f"Error checking/creating bucket {bucket_name}: {str(e)}"  # fixme убрать подробности
-            )
+            raise BucketError(f"Error checking/creating bucket {bucket_name}") from e
         except Exception as e:
             self._log(
                 message=f"Unexpected error during bucket verification: {str(e)}",
                 level=LoggingLevelsEnum.ERROR,
             )
-            raise RuntimeError(f"Unexpected error during bucket verification: {str(e)}")
+            raise BucketError("Unexpected error during bucket verification") from e
 
-    def get_client(self) -> BaseClient:
+    def get_client(self) -> Generator[BaseClient, None, None]:
         """
         Get the configured S3 client, ensuring it's ready for use.
 
@@ -190,12 +189,15 @@ class S3Client:
             if self._settings is None:
                 error_msg = "S3 client not initialized"
                 self._log(error_msg, level=LoggingLevelsEnum.ERROR)
-                raise ValueError(error_msg)
+                raise S3InitializingError(error_msg)
 
             self._log("Client is None, reinitializing...")
             self._reinitialize_client()
 
-        return self._client
+        try:
+            yield self._client
+        except self._client.exceptions.NoSuchKey:
+            raise S3FileNotFound("File not found")
 
     def check_connection(self) -> bool:
         """
@@ -213,7 +215,7 @@ class S3Client:
                 message="S3 client not initialized",
                 level=LoggingLevelsEnum.ERROR,
             )
-            raise ValueError("S3 client not initialized")
+            raise S3InitializingError("S3 client not initialized")
         try:
             self._client.list_buckets()
             self._log(

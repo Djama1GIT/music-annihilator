@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Generator
 
 from botocore.client import BaseClient  # type: ignore[import-untyped]
 from fastapi import Depends
@@ -11,7 +11,7 @@ from src.server.services.s3.client import S3Client
 _s3_client = S3Client(logger=logger)
 
 
-def get_s3_client(get_settings) -> Callable[[Settings], BaseClient]:
+def get_s3_client(get_settings) -> Callable[[Settings], Generator[BaseClient, None, None]]:
     """
     Factory function to create a dependency for obtaining an S3 client.
 
@@ -26,7 +26,7 @@ def get_s3_client(get_settings) -> Callable[[Settings], BaseClient]:
         A FastAPI dependency function that yields a configured S3 client.
     """
 
-    def _get_s3_client(settings: Settings = Depends(get_settings)) -> BaseClient:
+    def _get_s3_client(settings: Settings = Depends(get_settings)) -> Generator[BaseClient, None, None]:
         """
         Inner dependency function that manages the S3 client lifecycle.
 
@@ -46,6 +46,6 @@ def get_s3_client(get_settings) -> Callable[[Settings], BaseClient]:
         else:
             _s3_client.reconnect_if_needed()
 
-        return _s3_client.get_client()
+        yield from _s3_client.get_client()
 
     return _get_s3_client

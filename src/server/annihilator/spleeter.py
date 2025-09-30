@@ -6,6 +6,7 @@ from typing import Dict, AsyncGenerator, Optional
 from src.server.annihilator.progress_tracker import ProgressTracker
 from src.server.enums.logging import LoggingLevelsEnum
 from src.server.enums.progress import AnnihilationProgressEnum
+from src.server.errors.spleeter import SpleeterError
 from src.server.logger import logger
 from src.server.schemas.annihilator_sse import ProgressSSESchema
 from src.server.services.s3.uploader import S3Uploader
@@ -147,7 +148,7 @@ class Spleeter:
 
         except Exception as e:
             self._log(f"Error during processing: {str(e)}")
-            raise
+            raise SpleeterError("Spleeter processing failed") from e
 
     @staticmethod
     def _get_output_files(output_dir: Path) -> Dict[str, Path]:
@@ -257,4 +258,4 @@ class Spleeter:
                     level=LoggingLevelsEnum.ERROR,
                     exc_info=True,
                 )
-                yield self.progress_tracker.error_update(error=str(e))
+                yield self.progress_tracker.error_update(error="Processing failed")

@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from botocore.client import BaseClient  # type: ignore[import-untyped]
-from fastapi import APIRouter, status, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 
 from src.server.annihilator.spleeter_sse import SpleeterSSE
@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 
-@router.post("/spleeter-sse")
+@router.post("/spleeter-sse", summary="Process audio file with Music Annihilator using SSE")
 async def process_with_sse(
     file: UploadFile = File(...),
     s3: BaseClient = Depends(get_s3_client(get_settings)),
@@ -52,27 +52,19 @@ async def process_with_sse(
     logger.info(f"Starting audio processing for file: {file.filename}")
     logger.debug(f"Initializing SpleeterSeparator")
 
-    try:
-        file_content = await file.read()
-        logger.debug(f"Read file content, size: {len(file_content)} bytes")
+    file_content = await file.read()
+    logger.debug(f"Read file content, size: {len(file_content)} bytes")
 
-        annihilator = SpleeterSSE(
-            s3_client=s3,
-            s3_bucket=settings.S3_BUCKET,
-        )
-        logger.info(f"Processing audio... {file.filename}")
+    annihilator = SpleeterSSE(
+        s3_client=s3,
+        s3_bucket=settings.S3_BUCKET,
+    )
+    logger.info(f"Processing audio... {file.filename}")
 
-        unique_filename = str(uuid4())
-        logger.info(f"Generated unique filename: {unique_filename}")
+    unique_filename = str(uuid4())
+    logger.info(f"Generated unique filename: {unique_filename}")
 
-        return StreamingResponse(
-            annihilator.sse_generator(audio_bytes=file_content, filename=unique_filename),
-            media_type="text/event-stream",
-        )
-
-    except Exception as e:
-        logger.error(
-            f"Initial processing error for file {file.filename}: {str(e)}",
-            exc_info=True,
-        )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    return StreamingResponse(
+        annihilator.sse_generator(audio_bytes=file_content, filename=unique_filename),
+        media_type="text/event-stream",
+    )

@@ -6,6 +6,7 @@ from botocore.client import BaseClient  # type: ignore[import-untyped]
 from botocore.exceptions import ClientError  # type: ignore[import-untyped]
 
 from src.server.enums.logging import LoggingLevelsEnum
+from src.server.errors.s3 import S3Error
 
 
 class S3Uploader:
@@ -76,9 +77,16 @@ class S3Uploader:
 
         except ClientError as e:
             self._log(
-                message=f"S3 upload error for {file_path}: {str(e)}",
+                message=f"n error occurred during S3 upload for {file_path}: {str(e)}",
                 level=LoggingLevelsEnum.ERROR,
                 exc_info=True,
+            )
+            return False
+
+        except S3Error as e:
+            self._log(
+                message=f"An error occurred during S3 upload: {str(e)}",
+                level=LoggingLevelsEnum.ERROR,
             )
             return False
 
